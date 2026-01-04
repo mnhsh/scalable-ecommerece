@@ -40,6 +40,11 @@ func main() {
 	const port = "8080"
 	mux := http.NewServeMux()
 
+	mux.Handle(
+    "GET /api/me",
+    cfg.middlewareAuth(http.HandlerFunc(cfg.handlerMe)),
+	)
+
 	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	mux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
