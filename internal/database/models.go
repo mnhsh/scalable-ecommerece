@@ -11,6 +11,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type Product struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Name        string
+	Description sql.NullString
+	Price       int32
+	Stock       int32
+	IsActive    bool
+}
+
 type RefreshToken struct {
 	Token     string
 	CreatedAt time.Time

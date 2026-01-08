@@ -1,15 +1,15 @@
 package auth
 
 import (
-	"github.com/alexedwards/argon2id"
-	"github.com/google/uuid"
-	"github.com/golang-jwt/jwt/v5"
-	"time"
-	"fmt"
-	"net/http"
-	"strings"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"github.com/alexedwards/argon2id"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"net/http"
+	"strings"
+	"time"
 )
 
 func HashPassword(password string) (string, error) {
@@ -52,7 +52,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 	if !token.Valid {
-    return uuid.Nil, fmt.Errorf("invalid token")
+		return uuid.Nil, fmt.Errorf("invalid token")
 	}
 	idStr := claims.Subject
 	id, err := uuid.Parse(idStr)
