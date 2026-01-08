@@ -36,7 +36,7 @@ func main() {
 		JWTSecret: secretKey,
 	}
 
-	const port = "8080"
+	port := os.Getenv("PORT")
 
 	mux := http.NewServeMux()
 
