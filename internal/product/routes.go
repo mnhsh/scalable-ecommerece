@@ -28,5 +28,15 @@ func RegisterRoutes(mux *http.ServeMux, cfg *config.APIConfig) {
 			),
 		),
 	)
+	mux.Handle(
+		"PATCH /admin/products/{productID}",
+		middleware.Auth(cfg)(
+			middleware.RequireAdmin(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					handlerProductsUpdate(cfg, w, r)
+				}),
+			),
+		),
+	)
 }
 

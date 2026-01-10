@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/herodragmon/scalable-ecommerce/internal/config"
 	"github.com/herodragmon/scalable-ecommerce/internal/database"
 	"github.com/herodragmon/scalable-ecommerce/internal/response"
@@ -66,4 +68,50 @@ func handlerProductsCreate(cfg *config.APIConfig, w http.ResponseWriter, r *http
 
 	response.RespondWithJSON(w, http.StatusCreated, product)
 }
+
+func handlerProductsUpdate(cfg *config.APIConfig, w http.ResponseWriter, r *http.Request) {
+	productIDStr := r.PathValue("productID")
+	productID, err := uuid.Parse(productIDStr)
+	if err != nil {
+		response.RespondWithError(w, http.StatusBadRequest, "invalid product ID", err)
+		return
+	}
+
+	type updateReq struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		PriceCents int    `json:"price_cents"`
+		Stock      int    `json:"stock"`
+		IsActive   bool   `json:"is_active"`
+	}
+
+	var body updateReq
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.RespondWithError(w, http.StatusBadRequest, "invalid body", err)
+		return
+	}
+
+	product, err := cfg.DB.UpdateProduct(
+		r.Context(),
+		database.UpdateProductParams{
+			ID:   productID,
+			Name: body.Name,
+			Description: sql.NullString{
+				String: body.Description,
+				Valid:  body.Description != "",
+			},
+			PriceCents: int32(body.PriceCents),
+			Stock:      int32(body.Stock),
+			IsActive:   body.IsActive,
+		},
+	)
+	if err != nil {
+		response.RespondWithError(w, http.StatusInternalServerError, "couldn't update product", err)
+		return
+	}
+
+	response.RespondWithJSON(w, http.StatusOK, product)
+}
+
+
 

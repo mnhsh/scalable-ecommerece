@@ -30,4 +30,15 @@ INSERT INTO products (
     $5
 ) RETURNING *;
 
+-- name: UpdateProduct :one
+UPDATE products
+SET
+  name = $2,
+  description = $3,
+  price_cents = $4,
+  stock = $5,
+  is_active = $6,
+  updated_at = now()
+WHERE id = $1
+RETURNING *;
 
