@@ -7,21 +7,74 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
 
+const createProduct = `-- name: CreateProduct :one
+INSERT INTO products (
+  id,
+  created_at,
+  updated_at,
+  name,
+  description,
+  price_cents,
+  stock,
+  is_active
+) VALUES (
+    gen_random_uuid(),
+    now(),
+    now(),
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
+) RETURNING id, created_at, updated_at, name, description, price_cents, stock, is_active
+`
+
+type CreateProductParams struct {
+	Name        string
+	Description sql.NullString
+	PriceCents  int32
+	Stock       int32
+	IsActive    bool
+}
+
+func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
+	row := q.db.QueryRowContext(ctx, createProduct,
+		arg.Name,
+		arg.Description,
+		arg.PriceCents,
+		arg.Stock,
+		arg.IsActive,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Description,
+		&i.PriceCents,
+		&i.Stock,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, name, price, stock
+SELECT id, name, price_cents, stock
 FROM products
 WHERE is_active = true AND id = $1
 `
 
 type GetProductByIDRow struct {
-	ID    uuid.UUID
-	Name  string
-	Price int32
-	Stock int32
+	ID         uuid.UUID
+	Name       string
+	PriceCents int32
+	Stock      int32
 }
 
 func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (GetProductByIDRow, error) {
@@ -30,24 +83,24 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (GetProductB
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Price,
+		&i.PriceCents,
 		&i.Stock,
 	)
 	return i, err
 }
 
 const getProducts = `-- name: GetProducts :many
-SELECT id, name, price, stock
+SELECT id, name, price_cents, stock
 FROM products
 WHERE is_active = true
 ORDER BY created_at DESC
 `
 
 type GetProductsRow struct {
-	ID    uuid.UUID
-	Name  string
-	Price int32
-	Stock int32
+	ID         uuid.UUID
+	Name       string
+	PriceCents int32
+	Stock      int32
 }
 
 func (q *Queries) GetProducts(ctx context.Context) ([]GetProductsRow, error) {
@@ -62,7 +115,7 @@ func (q *Queries) GetProducts(ctx context.Context) ([]GetProductsRow, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.Price,
+			&i.PriceCents,
 			&i.Stock,
 		); err != nil {
 			return nil, err

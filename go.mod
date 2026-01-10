@@ -1,6 +1,6 @@
 module github.com/herodragmon/scalable-ecommerce
 
-go 1.25.3
+go 1.22
 
 require (
 	github.com/alexedwards/argon2id v1.0.0 // indirect

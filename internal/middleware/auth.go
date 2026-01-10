@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/google/uuid"
-
 	"github.com/herodragmon/scalable-ecommerce/internal/auth"
 	"github.com/herodragmon/scalable-ecommerce/internal/config"
 	"github.com/herodragmon/scalable-ecommerce/internal/response"
@@ -13,7 +11,10 @@ import (
 
 type contextKey string
 
-const userIDContextKey contextKey = "userID"
+const (
+	userIDContextKey   contextKey = "userID"
+	userRoleContextKey contextKey = "userRole"
+)
 
 func Auth(cfg *config.APIConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -23,30 +24,28 @@ func Auth(cfg *config.APIConfig) func(http.Handler) http.Handler {
 				response.RespondWithError(
 					w,
 					http.StatusUnauthorized,
-					"Missing or invalid token",
+					"missing or invalid token",
 					err,
 				)
 				return
 			}
 
-			userID, err := auth.ValidateJWT(token, cfg.JWTSecret)
+			userID, role, err := auth.ValidateJWT(token, cfg.JWTSecret)
 			if err != nil {
 				response.RespondWithError(
 					w,
 					http.StatusUnauthorized,
-					"Invalid or expired token",
+					"invalid or expired token",
 					err,
 				)
 				return
 			}
 
 			ctx := context.WithValue(r.Context(), userIDContextKey, userID)
+			ctx = context.WithValue(ctx, userRoleContextKey, role)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func GetUserIDFromContext(r *http.Request) (uuid.UUID, bool) {
-	userID, ok := r.Context().Value(userIDContextKey).(uuid.UUID)
-	return userID, ok
-}

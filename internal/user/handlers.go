@@ -50,7 +50,12 @@ func handlerLogin(cfg *config.APIConfig, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	accessToken, err := auth.MakeJWT(user.ID, cfg.JWTSecret, time.Hour*24*30)
+	accessToken, err := auth.MakeJWT(
+    user.ID,
+    "user",          // role
+    cfg.JWTSecret,
+    time.Hour,
+	)
 	if err != nil {
 		response.RespondWithError(w, http.StatusInternalServerError, "Couldn't create access JWT", err)
 		return
@@ -163,9 +168,10 @@ func handlerRefresh(cfg *config.APIConfig, w http.ResponseWriter, r *http.Reques
 	}
 
 	accessToken, err := auth.MakeJWT(
-		user.ID,
-		cfg.JWTSecret,
-		time.Hour,
+    user.ID,
+    "user",          // role
+    cfg.JWTSecret,
+    time.Hour,
 	)
 	if err != nil {
 		response.RespondWithError(w, http.StatusUnauthorized, "Couldn't validate token", err)

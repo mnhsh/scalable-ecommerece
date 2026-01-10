@@ -17,7 +17,7 @@ type Product struct {
 	UpdatedAt   time.Time
 	Name        string
 	Description sql.NullString
-	Price       int32
+	PriceCents  int32
 	Stock       int32
 	IsActive    bool
 }

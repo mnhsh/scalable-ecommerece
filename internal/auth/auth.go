@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+type Claims struct {
+	Role string `json:"role"`
+	jwt.RegisteredClaims
+}
+
 func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
@@ -28,13 +33,22 @@ func CheckPasswordHash(password, hash string) (bool, error) {
 	return match, nil
 }
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
-	claims := jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
-		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		Issuer:    "chirpy",
-		Subject:   userID.String(),
+func MakeJWT(
+	userID uuid.UUID,
+	role string,
+	tokenSecret string,
+	expiresIn time.Duration,
+) (string, error) {
+	claims := Claims{
+		Role: role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+			Issuer:    "chirpy",
+			Subject:   userID.String(),
+		},
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := token.SignedString([]byte(tokenSecret))
 	if err != nil {
@@ -43,23 +57,30 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 	return ss, nil
 }
 
-func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
-	claims := &jwt.RegisteredClaims{}
+func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, string, error) {
+	claims := &Claims{}
+
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(tokenSecret), nil
 	})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, "", err
 	}
+
 	if !token.Valid {
-		return uuid.Nil, fmt.Errorf("invalid token")
+		return uuid.Nil, "", fmt.Errorf("invalid token")
 	}
-	idStr := claims.Subject
-	id, err := uuid.Parse(idStr)
+
+	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, "", err
 	}
-	return id, nil
+
+	if claims.Role == "" {
+		return uuid.Nil, "", fmt.Errorf("missing role in token")
+	}
+
+	return userID, claims.Role, nil
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
