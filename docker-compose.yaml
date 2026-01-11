@@ -2,6 +2,8 @@ services:
   # PostgreSQL databases
   user-db:
     image: postgres:16-alpine
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -16,6 +18,8 @@ services:
 
   product-db:
     image: postgres:16-alpine
+    ports:
+      - "5434:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -30,6 +34,8 @@ services:
 
   cart-db:
     image: postgres:16-alpine
+    ports:
+      - "5435:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -54,6 +60,11 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # Product Service
@@ -68,6 +79,11 @@ services:
     depends_on:
       product-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # Cart Service
@@ -85,6 +101,11 @@ services:
         condition: service_healthy
       product-service:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # API Gateway

@@ -18,24 +18,24 @@ A microservices-based e-commerce platform built with Go. This project demonstrat
 │  - JWT authentication                                            │
 │  - Admin authorization                                           │
 └─────────────────────────────────────────────────────────────────┘
-                    │                    │
-         ┌──────────┘                    └──────────┐
-         ▼                                          ▼
-┌─────────────────────────────┐   ┌─────────────────────────────┐
-│      User Service           │   │     Product Service         │
-│       (Port 8081)           │   │       (Port 8082)           │
-│  - User registration        │   │  - Product catalog          │
-│  - Authentication (login)   │   │  - Product CRUD (admin)     │
-│  - JWT token generation     │   │  - Stock management         │
-│  - Refresh token mgmt       │   │                             │
-└─────────────────────────────┘   └─────────────────────────────┘
-              │                                 │
-              ▼                                 ▼
-┌─────────────────────────────┐   ┌─────────────────────────────┐
-│     PostgreSQL (users)      │   │  PostgreSQL (products)      │
-│   - users table             │   │   - products table          │
-│   - refresh_tokens table    │   │                             │
-└─────────────────────────────┘   └─────────────────────────────┘
+              │                │                │
+    ┌─────────┘                │                └─────────┐
+    ▼                          ▼                          ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ User Service  │   │Product Service│   │ Cart Service  │
+│  (Port 8081)  │   │  (Port 8082)  │   │  (Port 8083)  │
+│               │   │               │   │               │
+│- Registration │   │- Product CRUD │   │- Add/remove   │
+│- Auth (JWT)   │   │- Stock mgmt   │   │  items        │
+│- Token refresh│   │               │   │- Update qty   │
+└───────┬───────┘   └───────┬───────┘   └───────┬───────┘
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│  PostgreSQL   │   │  PostgreSQL   │   │  PostgreSQL   │
+│   (users)     │   │  (products)   │   │   (carts)     │
+│  Port 5433    │   │  Port 5434    │   │  Port 5435    │
+└───────────────┘   └───────────────┘   └───────────────┘
 ```
 
 ## Services
@@ -62,6 +62,14 @@ Handles the product catalog:
 - Create product - admin only (`POST /admin/products`)
 - Update product - admin only (`PATCH /admin/products/{id}`)
 
+### Cart Service (`services/cart-service`)
+Manages user shopping carts:
+- Get cart (`GET /api/cart`)
+- Add item to cart (`POST /api/cart/items`)
+- Update item quantity (`PATCH /api/cart/items/{id}`)
+- Remove item from cart (`DELETE /api/cart/items/{id}`)
+- Clear entire cart (`DELETE /api/cart`)
+
 ## Quick Start
 
 ### Using Docker Compose (Recommended)
@@ -69,6 +77,11 @@ Handles the product catalog:
 ```bash
 # Start all services
 docker compose up -d
+
+# Run database migrations (first time only)
+goose -dir services/user-service/sql/schema postgres "postgres://postgres:postgres@localhost:5433/users?sslmode=disable" up
+goose -dir services/product-service/sql/schema postgres "postgres://postgres:postgres@localhost:5434/products?sslmode=disable" up
+goose -dir services/cart-service/sql/schema postgres "postgres://postgres:postgres@localhost:5435/carts?sslmode=disable" up
 
 # View logs
 docker compose logs -f
@@ -79,38 +92,46 @@ docker compose down
 
 The API will be available at `http://localhost:8080`
 
-### Running Locally
+### Database Ports (Docker)
+
+| Database | Container | Host Port |
+|----------|-----------|-----------|
+| users | user-db | 5433 |
+| products | product-db | 5434 |
+| carts | cart-db | 5435 |
+
+### Running Locally (Without Docker)
 
 1. **Prerequisites:**
    - Go 1.22+
    - PostgreSQL 16+
+   - goose (for migrations)
    - sqlc (for database code generation)
 
 2. **Set up databases:**
    ```bash
-   # Create user database
    createdb users
-   
-   # Create product database
    createdb products
+   createdb carts
    ```
 
 3. **Run migrations:**
    ```bash
-   # For user service
-   cd services/user-service
-   goose -dir sql/schema postgres "postgres://postgres:postgres@localhost:5432/users?sslmode=disable" up
+   # User service
+   goose -dir services/user-service/sql/schema postgres "postgres://localhost/users?sslmode=disable" up
    
-   # For product service
-   cd services/product-service
-   goose -dir sql/schema postgres "postgres://postgres:postgres@localhost:5432/products?sslmode=disable" up
+   # Product service
+   goose -dir services/product-service/sql/schema postgres "postgres://localhost/products?sslmode=disable" up
+   
+   # Cart service
+   goose -dir services/cart-service/sql/schema postgres "postgres://localhost/carts?sslmode=disable" up
    ```
 
 4. **Configure environment:**
    ```bash
-   # Copy example env files
    cp services/user-service/.env.example services/user-service/.env
    cp services/product-service/.env.example services/product-service/.env
+   cp services/cart-service/.env.example services/cart-service/.env
    cp services/api-gateway/.env.example services/api-gateway/.env
    ```
 
@@ -122,7 +143,10 @@ The API will be available at `http://localhost:8080`
    # Terminal 2 - Product Service
    cd services/product-service && go run .
    
-   # Terminal 3 - API Gateway
+   # Terminal 3 - Cart Service
+   cd services/cart-service && go run .
+   
+   # Terminal 4 - API Gateway
    cd services/api-gateway && go run .
    ```
 
@@ -141,9 +165,14 @@ The API will be available at `http://localhost:8080`
 
 ### Protected Endpoints (Auth Required)
 
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| GET | `/api/me` | user | Get current user info |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/me` | Get current user info |
+| GET | `/api/cart` | Get user's cart |
+| POST | `/api/cart/items` | Add item to cart |
+| PATCH | `/api/cart/items/{id}` | Update item quantity |
+| DELETE | `/api/cart/items/{id}` | Remove item from cart |
+| DELETE | `/api/cart` | Clear entire cart |
 
 ### Admin Endpoints (Admin Role Required)
 
@@ -173,6 +202,34 @@ curl -X POST http://localhost:8080/api/login \
 curl http://localhost:8080/api/products
 ```
 
+### Add Item to Cart
+```bash
+curl -X POST http://localhost:8080/api/cart/items \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt-token>" \
+  -d '{"product_id": "<product-uuid>", "quantity": 2}'
+```
+
+### Get Cart
+```bash
+curl http://localhost:8080/api/cart \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+### Update Cart Item Quantity
+```bash
+curl -X PATCH http://localhost:8080/api/cart/items/<item-id> \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt-token>" \
+  -d '{"quantity": 5}'
+```
+
+### Remove Item from Cart
+```bash
+curl -X DELETE http://localhost:8080/api/cart/items/<item-id> \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
 ### Create Product (Admin)
 ```bash
 curl -X POST http://localhost:8080/admin/products \
@@ -190,6 +247,9 @@ cd services/user-service && sqlc generate
 
 # Product Service
 cd services/product-service && sqlc generate
+
+# Cart Service
+cd services/cart-service && sqlc generate
 ```
 
 ### Run Tests
@@ -215,6 +275,7 @@ docker compose build
 | `SECRET_KEY` | JWT signing key | - |
 | `USER_SERVICE_URL` | User service URL | `http://localhost:8081` |
 | `PRODUCT_SERVICE_URL` | Product service URL | `http://localhost:8082` |
+| `CART_SERVICE_URL` | Cart service URL | `http://localhost:8083` |
 
 ### User Service
 | Variable | Description | Default |
@@ -231,14 +292,13 @@ docker compose build
 | `PLATFORM` | Environment (dev/prod) | `dev` |
 | `DB_URL` | PostgreSQL connection string | - |
 
-## Legacy Monolith
-
-The original monolithic application code is preserved in the root directory (`main.go`, `internal/`, `sql/`). It can still be run independently if needed:
-
-```bash
-# Run the monolith
-go run main.go
-```
+### Cart Service
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `8083` |
+| `PLATFORM` | Environment (dev/prod) | `dev` |
+| `DB_URL` | PostgreSQL connection string | - |
+| `PRODUCT_SERVICE_URL` | Product service URL | - |
 
 ## Tech Stack
 

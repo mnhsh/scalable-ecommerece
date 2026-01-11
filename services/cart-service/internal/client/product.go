@@ -16,10 +16,10 @@ type ProductClient struct {
 }
 
 type Product struct {
-	ID         uuid.UUID `json:"id"`
-	Name       string    `json:"name"`
-	PriceCents int32     `json:"price_cents"`
-	Stock      int32     `json:"stock"`
+	ID         uuid.UUID `json:"ID"`
+	Name       string    `json:"Name"`
+	PriceCents int32     `json:"PriceCents"`
+	Stock      int32     `json:"Stock"`
 }
 
 func NewProductClient(baseURL string, timeout time.Duration) *ProductClient {
