@@ -166,6 +166,104 @@ func handlerGetOrder(cfg *config.Config, w http.ResponseWriter, r *http.Request)
 	response.RespondWithJSON(w, http.StatusOK, OrderResponse{
 		Order: order,
 		Items: items,
-	}))
+	})
 }
 
+func handlerCancelOrder(cfg *config.Config, w http.ResponseWriter, r *http.Request) {
+	orderIDStr := r.PathValue("orderID")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		response.RespondWithError(w, http.StatusBadRequest, "invalid order ID", err)
+		return
+	}
+	userIDStr := r.Header.Get("X-User-ID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.RespondWithError(w, http.StatusBadRequest, "invalid user ID", err)
+		return
+	}
+
+	order, err := cfg.DB.GetOrderByID(r.Context(), orderID)
+  if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			response.RespondWithError(w, http.StatusNotFound, "order not found", nil)
+			return
+		}
+		response.RespondWithError(w, http.StatusInternalServerError, "could not get order", err)
+		return
+	}
+
+	if order.UserID != userID {
+		response.RespondWithError(w, http.StatusForbidden, "order does not belong to you", nil)
+    return
+	}
+
+	if order.Status != "pending" {
+		response.RespondWithError(w, http.StatusBadRequest, "can only cancel pending orders", nil)
+    return
+	}
+	
+	updatedOrder, err := cfg.DB.UpdateOrderStatus(r.Context(), database.UpdateOrderStatusParams{
+		ID: order.ID,
+		Status:  database.OrderStatusCancelled,
+	})
+	if err != nil {
+    response.RespondWithError(w, http.StatusInternalServerError, "could not cancel order", err)
+    return
+	}
+
+	response.RespondWithJSON(w, http.StatusOK, updatedOrder)
+}
+
+func handlerUpdateStatus(cfg *config.Config, w http.ResponseWriter, r *http.Request) {
+	type updateStatusRequest struct {
+    Status string `json:"status"`
+	}
+
+	orderIDStr := r.PathValue("orderID")
+	orderID, err := uuid.Parse(orderIDStr)
+	if err != nil {
+		response.RespondWithError(w, http.StatusBadRequest, "invalid order ID", err)
+		return
+	}
+	
+	decoder := json.NewDecoder(r.Body)
+	params := updateStatusRequest{}
+	err = decoder.Decode(&params)
+	if err != nil {
+    response.RespondWithError(w, http.StatusBadRequest, "invalid request body", err)
+    return
+	}
+
+	var status database.OrderStatus
+	switch params.Status {
+	case "pending":
+	    status = database.OrderStatusPending
+	case "paid":
+	    status = database.OrderStatusPaid
+	case "shipped":
+	    status = database.OrderStatusShipped
+	case "delivered":
+	    status = database.OrderStatusDelivered
+	case "cancelled":
+	    status = database.OrderStatusCancelled
+	default:
+	    response.RespondWithError(w, http.StatusBadRequest, "invalid status value", nil)
+	    return
+	}
+
+	updatedOrder, err := cfg.DB.UpdateOrderStatus(r.Context(), database.UpdateOrderStatusParams{
+		ID: orderID,
+		Status: status,
+	})
+	if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+			response.RespondWithError(w, http.StatusNotFound, "order not found", nil)
+			return
+    }
+    response.RespondWithError(w, http.StatusInternalServerError, "could not update order status", err)
+    return
+	}
+
+	response.RespondWithJSON(w, http.StatusOK, updatedOrder)
+}

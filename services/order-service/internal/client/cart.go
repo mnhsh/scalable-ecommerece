@@ -64,7 +64,7 @@ func (c *CartClient) GetCart(ctx context.Context, userID uuid.UUID) (*Cart, bool
 	return &cart, true, nil
 }
 
-func (c *Client) ClearCart(ctx context.Context, userID uuid.UUID) error {
+func (c *CartClient) ClearCart(ctx context.Context, userID uuid.UUID) error {
 	if userID == uuid.Nil {
 		return fmt.Errorf("invalid UUID: nil")
 	}

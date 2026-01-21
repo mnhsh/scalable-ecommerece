@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const creatOrder = `-- name: CreatOrder :one
+const createOrder = `-- name: CreateOrder :one
 INSERT INTO orders (
   user_id,
   status,
@@ -23,14 +23,14 @@ INSERT INTO orders (
 ) RETURNING id, user_id, status, total_cents, created_at, updated_at
 `
 
-type CreatOrderParams struct {
+type CreateOrderParams struct {
 	UserID     uuid.UUID
 	Status     OrderStatus
 	TotalCents int32
 }
 
-func (q *Queries) CreatOrder(ctx context.Context, arg CreatOrderParams) (Order, error) {
-	row := q.db.QueryRowContext(ctx, creatOrder, arg.UserID, arg.Status, arg.TotalCents)
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
+	row := q.db.QueryRowContext(ctx, createOrder, arg.UserID, arg.Status, arg.TotalCents)
 	var i Order
 	err := row.Scan(
 		&i.ID,

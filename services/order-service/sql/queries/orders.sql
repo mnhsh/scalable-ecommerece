@@ -1,4 +1,4 @@
--- name: CreatOrder :one
+-- name: CreateOrder :one
 INSERT INTO orders (
   user_id,
   status,
