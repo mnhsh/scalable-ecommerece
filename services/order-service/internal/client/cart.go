@@ -28,8 +28,8 @@ type Cart struct {
     TotalCents int64      `json:"total_cents"`
 }
 
-func NewClient(baseURL string, timeout time.Duration) *Client {
-    return &Client{
+func NewCartClient(baseURL string, timeout time.Duration) *CartClient {
+    return &CartClient{
         BaseURL:    baseURL,
         HTTPClient: &http.Client{Timeout: timeout},
     }

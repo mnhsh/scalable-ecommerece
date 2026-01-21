@@ -89,7 +89,7 @@ func handlerLogin(cfg *config.Config, w http.ResponseWriter, r *http.Request) {
 
 	accessToken, err := auth.MakeJWT(
 		user.ID,
-		"user",
+		user.Role,
 		cfg.JWTSecret,
 		time.Hour,
 	)
@@ -190,7 +190,7 @@ func handlerRefresh(cfg *config.Config, w http.ResponseWriter, r *http.Request) 
 
 	accessToken, err := auth.MakeJWT(
 		user.ID,
-		"user",
+		user.Role,
 		cfg.JWTSecret,
 		time.Hour,
 	)

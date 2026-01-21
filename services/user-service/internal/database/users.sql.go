@@ -63,7 +63,8 @@ SELECT
     created_at,
     updated_at,
     email,
-    hashed_password
+    hashed_password,
+    role
 FROM users
 WHERE email = $1
 `
@@ -77,6 +78,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.Role,
 	)
 	return i, err
 }

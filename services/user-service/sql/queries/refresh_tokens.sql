@@ -20,7 +20,8 @@ SELECT
     u.created_at,
     u.updated_at,
     u.email,
-    u.hashed_password
+    u.hashed_password,
+    u.role
 FROM refresh_tokens rt
 JOIN users u ON u.id = rt.user_id
 WHERE rt.token = $1

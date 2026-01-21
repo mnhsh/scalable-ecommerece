@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 	"github.com/google/uuid"
 )
 
@@ -18,6 +19,15 @@ type Product struct {
 type ProductClient struct {
 	BaseURL    string
 	HTTPClient *http.Client
+}
+
+func NewProductClient(baseURL string, timeout time.Duration) *ProductClient {
+	return &ProductClient{
+		BaseURL: baseURL,
+		HTTPClient: &http.Client{
+			Timeout: timeout,
+		},
+	}
 }
 
 func (c *ProductClient) GetProduct(ctx context.Context, productID uuid.UUID) (*Product, bool, error) {

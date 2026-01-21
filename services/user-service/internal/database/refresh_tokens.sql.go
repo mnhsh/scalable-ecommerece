@@ -55,7 +55,8 @@ SELECT
     u.created_at,
     u.updated_at,
     u.email,
-    u.hashed_password
+    u.hashed_password,
+    u.role
 FROM refresh_tokens rt
 JOIN users u ON u.id = rt.user_id
 WHERE rt.token = $1
@@ -72,6 +73,7 @@ func (q *Queries) GetUserByRefreshToken(ctx context.Context, token string) (User
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.Role,
 	)
 	return i, err
 }

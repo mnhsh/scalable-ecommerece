@@ -43,6 +43,12 @@ func RegisterRoutes(mux *http.ServeMux, cfg *config.Config) {
 	mux.HandleFunc("PATCH /api/cart/items/{itemID}", authMiddleware(cfg, proxyWithUserIDAndPathHandler(cfg.CartServiceURL, "/api/cart/items/", "itemID")))
 	mux.HandleFunc("DELETE /api/cart/items/{itemID}", authMiddleware(cfg, proxyWithUserIDAndPathHandler(cfg.CartServiceURL, "/api/cart/items/", "itemID")))
 	mux.HandleFunc("DELETE /api/cart", authMiddleware(cfg, proxyWithUserIDHandler(cfg.CartServiceURL, "/api/cart")))
+
+	// Order routes (all require auth, all need X-User-ID header)
+	mux.HandleFunc("POST /api/orders", authMiddleware(cfg, proxyWithUserIDHandler(cfg.OrderServiceURL, "/api/orders")))
+	mux.HandleFunc("GET /api/orders", authMiddleware(cfg, proxyWithUserIDHandler(cfg.OrderServiceURL, "/api/orders")))
+	mux.HandleFunc("GET /api/orders/{orderID}", authMiddleware(cfg, proxyWithUserIDAndPathHandler(cfg.OrderServiceURL, "/api/orders/", "orderID")))
+	mux.HandleFunc("DELETE /api/orders/{orderID}", authMiddleware(cfg, proxyWithUserIDAndPathHandler(cfg.OrderServiceURL, "/api/orders/", "orderID")))
 }
 
 // proxyHandler creates a simple proxy handler for a target service
@@ -172,27 +178,28 @@ func proxyRequest(w http.ResponseWriter, r *http.Request, targetURL string) {
 }
 
 func proxyWithUserIDHandler(targetURL, path string) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserIDFromContext(r.Context())
-    if !ok {
+		if !ok {
 			response.RespondWithError(w, http.StatusUnauthorized, "Unauthorized", nil)
-      return
-    }
-    // Add X-User-ID header
-    r.Header.Set("X-User-ID", userID.String())
+			return
+		}
+		// Add X-User-ID header
+		r.Header.Set("X-User-ID", userID.String())
 		proxyRequest(w, r, targetURL+path)
 	}
 }
 
-func proxyWithUserIDAndPathHandler(targetURL, basePath, paramName string) http.HandlerFunc {
+func proxyWithUserIDAndPathHandler(targetURL, basePath, paramName string, endPath ...string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-    userID, ok := auth.GetUserIDFromContext(r.Context())
+		userID, ok := auth.GetUserIDFromContext(r.Context())
 		if !ok {
 			response.RespondWithError(w, http.StatusUnauthorized, "Unauthorized", nil)
-      return
-    }
-    r.Header.Set("X-User-ID", userID.String())
-    pathValue := r.PathValue(paramName)
-    proxyRequest(w, r, targetURL+basePath+pathValue)
-  }
+			return
+		}
+		r.Header.Set("X-User-ID", userID.String())
+		pathValue := r.PathValue(paramName)
+		endValue := strings.Join(endPath, "")
+		proxyRequest(w, r, targetURL+basePath+pathValue+endValue)
+	}
 }

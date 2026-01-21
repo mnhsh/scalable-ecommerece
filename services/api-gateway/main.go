@@ -22,7 +22,8 @@ func main() {
 	cfg := &config.Config{
 		UserServiceURL:    getEnvOrDefault("USER_SERVICE_URL", "http://localhost:8081"),
 		ProductServiceURL: getEnvOrDefault("PRODUCT_SERVICE_URL", "http://localhost:8082"),
-		CartServiceURL: os.Getenv("CART_SERVICE_URL"),
+		CartServiceURL:    getEnvOrDefault("CART_SERVICE_URL", "http://localhost:8083"),
+		OrderServiceURL:   getEnvOrDefault("ORDER_SERVICE_URL", "http://localhost:8084"),
 		JWTSecret:         os.Getenv("SECRET_KEY"),
 	}
 
@@ -37,6 +38,8 @@ func main() {
 	log.Printf("API Gateway starting on port %s", port)
 	log.Printf("User service: %s", cfg.UserServiceURL)
 	log.Printf("Product service: %s", cfg.ProductServiceURL)
+	log.Printf("Cart service: %s", cfg.CartServiceURL)
+	log.Printf("Order service: %s", cfg.OrderServiceURL)
 	log.Fatal(server.ListenAndServe())
 }
 

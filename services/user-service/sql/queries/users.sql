@@ -24,7 +24,8 @@ SELECT
     created_at,
     updated_at,
     email,
-    hashed_password
+    hashed_password,
+    role
 FROM users
 WHERE email = $1;
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"errors"
+	"encoding/json"
 	
 	"github.com/google/uuid" 
 	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/config"
