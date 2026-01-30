@@ -14,6 +14,7 @@ import (
 	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/database"
 	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/handlers"
 	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/client"
+	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/rabbitmq"
 )
 
 func main() {
@@ -49,11 +50,23 @@ func main() {
 
 	dbQueries := database.New(db)
 
+	rabbitmqURL := os.Getenv("RABBITMQ_URL")
+	if rabbitmqURL == "" {
+		log.Fatal("RABBITMQ_URL is not set")
+	}
+
+	publisher, err := rabbitmq.NewPublisher(rabbitmqURL)
+	if err != nil {
+		log.Fatalf("failed to publish exchange: %v", err)
+	}
+	defer publisher.Close()
+
 	cfg := &config.Config{
 		DB:       dbQueries,
 		Platform: platform,
 		ProductClient: productClient,
 		CartClient: cartClient,
+		Publisher: publisher,
 	}
 
 	mux := http.NewServeMux()
