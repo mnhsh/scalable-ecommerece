@@ -25,3 +25,6 @@ RETURNING *;
 
 -- name: GetOrderItems :many
 SELECT * FROM order_items WHERE order_id = $1;
+
+-- name: DeleteOrder :exec
+DELETE FROM orders where id = $1;

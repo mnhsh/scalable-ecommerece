@@ -6,11 +6,13 @@ import (
 	"log"
 	"errors"
 	"encoding/json"
+	"time"
 	
 	"github.com/google/uuid" 
 	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/config"
 	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/response"
 	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/database"
+	"github.com/herodragmon/scalable-ecommerce/services/order-service/internal/events"
 )
 
 func RegisterRoutes(mux *http.ServeMux, cfg *config.Config) {
@@ -93,6 +95,28 @@ func handlerCreateOrder(cfg *config.Config, w http.ResponseWriter, r *http.Reque
     	response.RespondWithError(w, http.StatusInternalServerError, "could not create order item", err)
     	return
 		}
+	}
+
+	eventItems := make([]events.OrderItem, len(cart.Items))
+	for i, item := range cart.Items {
+		eventItems[i] = events.OrderItem{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+		}
+	}
+	
+	event := events.OrderCreatedEvent{
+		OrderID:  order.ID,
+		UserID:   userID,
+		Items:    eventItems,
+		Timestamp:time.Now(),
+	}
+
+	err = cfg.Publisher.Publish("order.created", event)
+	if err != nil {
+		cfg.DB.DeleteOrder(r.Context(), order.ID)
+    response.RespondWithError(w, http.StatusInternalServerError, "failed to publish order event", err)
+    return
 	}
 
 	err = cfg.CartClient.ClearCart(r.Context(), userID)
@@ -211,6 +235,32 @@ func handlerCancelOrder(cfg *config.Config, w http.ResponseWriter, r *http.Reque
 	if err != nil {
     response.RespondWithError(w, http.StatusInternalServerError, "could not cancel order", err)
     return
+	}
+
+	items, err := cfg.DB.GetOrderItems(r.Context(), orderID)
+	if err != nil {
+		response.RespondWithError(w, http.StatusInternalServerError, "could not get order items", err)
+		return
+	}
+
+	eventItems := make([]events.OrderItem, len(items))
+	for i, item := range items {
+		eventItems[i] = events.OrderItem{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+		}
+	}
+	
+	event := events.OrderCancelledEvent{
+		OrderID:  order.ID,
+		UserID:   userID,
+		Items:    eventItems,
+		Timestamp:time.Now(),
+	}
+
+	err = cfg.Publisher.Publish("order.cancelled", event)
+	if err != nil {
+    log.Printf("ERROR: failed to publish order.cancelled event for order %s: %v", orderID, err)
 	}
 
 	response.RespondWithJSON(w, http.StatusOK, updatedOrder)
